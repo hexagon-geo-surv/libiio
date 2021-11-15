@@ -14,9 +14,7 @@
 #include <string.h>
 
 struct iio_scan_context {
-	bool scan_usb;
-	bool scan_network;
-	bool scan_local;
+	char *backendopts;
 };
 
 const char * iio_context_info_get_description(
@@ -35,37 +33,41 @@ ssize_t iio_scan_context_get_info_list(struct iio_scan_context *ctx,
 		struct iio_context_info ***info)
 {
 	struct iio_scan_result scan_result = { 0, NULL };
+	char *token, *rest=NULL;
+	ssize_t ret;
 
-	if (WITH_LOCAL_BACKEND && ctx->scan_local) {
-		int ret = local_context_scan(&scan_result);
-		if (ret < 0) {
-			if (scan_result.info)
-				iio_context_info_list_free(scan_result.info);
-			return ret;
-		}
-	}
+	for (token = iio_strtok_r(ctx->backendopts, ",", &rest);
+			token; token = iio_strtok_r(NULL, ",", &rest)) {
 
-	if (WITH_USB_BACKEND && ctx->scan_usb) {
-		int ret = usb_context_scan(&scan_result);
-		if (ret < 0) {
-			if (scan_result.info)
-				iio_context_info_list_free(scan_result.info);
-			return ret;
-		}
-	}
-
-	if (HAVE_DNS_SD && ctx->scan_network) {
-		int ret = dnssd_context_scan(&scan_result);
-		if (ret < 0) {
-			if (scan_result.info)
-				iio_context_info_list_free(scan_result.info);
-			return ret;
+		/* Since tokens are all null terminated, it's safe to use strcmp on them */
+		if (WITH_LOCAL_BACKEND && !strcmp(token, "local")) {
+			ret = local_context_scan(&scan_result);
+			if (ret < 0)
+				goto err_free_scan_result_info;
+		} else if (WITH_USB_BACKEND && (!strcmp(token, "usb") ||
+						!strncmp(token, "usb=", sizeof("usb=") - 1))) {
+			token = token[3] == '=' ? token + 4 : NULL;
+			ret = usb_context_scan(&scan_result, token);
+			if (ret < 0)
+				goto err_free_scan_result_info;
+		} else if (HAVE_DNS_SD && !strcmp(token, "ip")) {
+			ret = dnssd_context_scan(&scan_result);
+			if (ret < 0)
+				goto err_free_scan_result_info;
+		} else {
+			ret = -ENODEV;
+			goto err_free_scan_result_info;
 		}
 	}
 
 	*info = scan_result.info;
 
 	return (ssize_t) scan_result.size;
+
+err_free_scan_result_info:
+	if (scan_result.info)
+		iio_context_info_list_free(scan_result.info);
+	return ret;
 }
 
 void iio_context_info_list_free(struct iio_context_info **list)
@@ -113,6 +115,8 @@ struct iio_scan_context * iio_create_scan_context(
 		const char *backend, unsigned int flags)
 {
 	struct iio_scan_context *ctx;
+	char *ptr, *ptr2;
+	unsigned int i, len;
 
 	/* "flags" must be zero for now */
 	if (flags != 0) {
@@ -126,20 +130,39 @@ struct iio_scan_context * iio_create_scan_context(
 		return NULL;
 	}
 
-	if (!backend || strstr(backend, "local"))
-		ctx->scan_local = true;
+	ctx->backendopts = iio_strndup(backend ? backend : "local,usb,ip", PATH_MAX);
+	if (!ctx->backendopts) {
+		free(ctx);
+		errno = ENOMEM;
+		return NULL;
+	}
 
-	if (!backend || strstr(backend, "usb"))
-		ctx->scan_usb = true;
+	if (backend) {
+		/* Replace the colon separator with a comma. */
+		len = strlen(ctx->backendopts);
+		for (i = 0; i < len; i++)
+			if (ctx->backendopts[i] == ':')
+				ctx->backendopts[i] = ',';
 
-	if (!backend || strstr(backend, "ip"))
-		ctx->scan_network = true;
+		/* The only place where a colon is accepted is in the usb arguments:
+		 * usb=vid:pid */
+		for (ptr = strstr(ctx->backendopts, "usb="); ptr;
+		     ptr = strstr(ptr, "usb=")) {
+			ptr += sizeof("usb=");
+			strtoul(ptr, &ptr2, 16);
+
+			/* The USB backend will take care of errors */
+			if (ptr2 != ptr && *ptr2 == ',')
+				*ptr2 = ':';
+		}
+	}
 
 	return ctx;
 }
 
 void iio_scan_context_destroy(struct iio_scan_context *ctx)
 {
+	free(ctx->backendopts);
 	free(ctx);
 }
 

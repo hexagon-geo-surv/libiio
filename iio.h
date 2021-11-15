@@ -236,13 +236,22 @@ enum iio_event_direction {
 
 
 /** @brief Create a scan context
- * @param backend A NULL-terminated string containing the backend(s) to use for
- * scanning (example: pre version 0.20 :  "local", "ip", or "usb"; post version
- * 0.20 can handle multiple, including "local:usb:", "ip:usb:", "local:usb:ip:").
- * If NULL, all the available backends are used.
+ * @param backend A NULL-terminated string containing a comma-separated
+ * list of the backend(s) to use for scanning.
  * @param flags Unused for now. Set to 0.
  * @return on success, a pointer to a iio_scan_context structure
- * @return On failure, NULL is returned and errno is set appropriately */
+ * @return On failure, NULL is returned and errno is set appropriately
+ *
+ * <b>NOTE:</b> Libiio version 0.20 and above can handle multiple
+ * strings, for instance "local:usb:", "ip:usb:", "local:usb:ip:", and
+ * require a colon as the delimiter.
+ * Libiio version 0.24 and above prefer a comma instead of colon as the
+ * delimiter, and handle specifying backend-specific information. For
+ * instance, "local,usb=0456:*" will scan the local backend and limit
+ * scans on USB to vendor ID 0x0456, and accept all product IDs. The
+ * "usb=0456:b673" string would limit the scan to the device with this
+ * particular VID/PID. Both IDs are expected in hexadecimal, no 0x
+ * prefix needed. */
 __api __check_ret struct iio_scan_context * iio_create_scan_context(
 		const char *backend, unsigned int flags);
 
