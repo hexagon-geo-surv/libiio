@@ -54,7 +54,7 @@ static struct sockaddr_in sockaddr = {
 	.sin_family = AF_INET,
 };
 
-#ifdef HAVE_IPV6
+#if HAVE_IPV6
 static struct sockaddr_in6 sockaddr6 = {
 	.sin6_family = AF_INET6,
 	.sin6_addr = IN6ADDR_ANY_INIT,
@@ -183,11 +183,11 @@ static int main_server(struct iio_context *ctx, bool debug,
 	sockaddr.sin_port = htons(port);
 	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-#ifdef HAVE_IPV6
-	sockaddr6.sin6_port = htons(port);
+	if (HAVE_IPV6) {
+		sockaddr6.sin6_port = htons(port);
+		fd = socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK, 0);
+	}
 
-	fd = socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK, 0);
-#endif
 	ipv6 = (fd >= 0);
 	if (!ipv6)
 		fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -203,11 +203,9 @@ static int main_server(struct iio_context *ctx, bool debug,
 		IIO_WARNING("setsockopt SO_REUSEADDR : %s\n", err_str);
 	}
 
-#ifdef HAVE_IPV6
-	if (ipv6)
+	if (HAVE_IPV6 && ipv6)
 		ret = bind(fd, (struct sockaddr *) &sockaddr6,
 				sizeof(sockaddr6));
-#endif
 	if (!ipv6)
 		ret = bind(fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 	if (ret < 0) {

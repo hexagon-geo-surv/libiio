@@ -20,7 +20,7 @@
 #include "iio-private.h"
 #include "deps/mdns/mdns.h"
 
-#ifdef HAVE_IPV6
+#if HAVE_IPV6
 static const unsigned char localhost[] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 1
@@ -68,7 +68,7 @@ static int open_client_sockets(int *sockets, unsigned int max_sockets)
 
 		ret = GetAdaptersAddresses(AF_UNSPEC,
 					   GAA_FLAG_SKIP_MULTICAST
-#ifndef HAVE_IPV6
+#if HAVE_IPV6
 					   | GAA_FLAG_SKIP_ANYCAST
 #endif
 					   , 0,
@@ -104,7 +104,7 @@ static int open_client_sockets(int *sockets, unsigned int max_sockets)
 						sockets[num_sockets++] = sock;
 				}
 			}
-#ifdef HAVE_IPV6
+#if HAVE_IPV6
 			else if (unicast->Address.lpSockaddr->sa_family == AF_INET6) {
 				struct sockaddr_in6 *saddr6;
 

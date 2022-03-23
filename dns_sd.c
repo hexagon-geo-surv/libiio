@@ -88,14 +88,10 @@ static int dnssd_fill_context_info(struct iio_context_info *info,
 
 	if (port == IIOD_PORT)
 		iio_snprintf(uri, sizeof(uri), "%s", addr_str);
-	else {
-#ifdef HAVE_IPV6
-		if (strchr(addr_str, ':'))
-			iio_snprintf(uri, sizeof(uri), "[%s]:%hu", addr_str, port);
-		else
-#endif
-			iio_snprintf(uri, sizeof(uri), "%s:%hu", addr_str, port);
-	}
+	else if (HAVE_IPV6 && strchr(addr_str, ':'))
+		iio_snprintf(uri, sizeof(uri), "[%s]:%hu", addr_str, port);
+	else
+		iio_snprintf(uri, sizeof(uri), "%s:%hu", addr_str, port);
 
 	ctx = network_create_context(uri);
 	if (!ctx) {

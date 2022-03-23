@@ -282,10 +282,10 @@ static char * network_get_description(struct addrinfo *res)
 	char *description;
 	unsigned int len;
 
-#ifdef HAVE_IPV6
-	len = INET6_ADDRSTRLEN + IF_NAMESIZE + 2;
+#if HAVE_IPV6
+		len = INET6_ADDRSTRLEN + IF_NAMESIZE + 2;
 #else
-	len = INET_ADDRSTRLEN + 1;
+		len = INET_ADDRSTRLEN + 1;
 #endif
 
 	description = malloc(len);
@@ -296,7 +296,7 @@ static char * network_get_description(struct addrinfo *res)
 
 	description[0] = '\0';
 
-#ifdef HAVE_IPV6
+#if HAVE_IPV6
 	if (res->ai_family == AF_INET6) {
 		struct sockaddr_in6 *in = (struct sockaddr_in6 *) res->ai_addr;
 		char *ptr;
@@ -316,6 +316,7 @@ static char * network_get_description(struct addrinfo *res)
 		}
 	}
 #endif
+
 	if (res->ai_family == AF_INET) {
 		struct sockaddr_in *in = (struct sockaddr_in *) res->ai_addr;
 #if (!_WIN32 || _WIN32_WINNT >= 0x600)

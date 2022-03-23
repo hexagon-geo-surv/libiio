@@ -360,9 +360,8 @@ int dnssd_resolve_host(const char *hostname,
 	 * we try to resolve both in ipv4 and ipv6...
 	 */
 	avahi_resolve_host(d, hostname, AVAHI_PROTO_INET);
-#ifdef HAVE_IPV6
-	avahi_resolve_host(d, hostname, AVAHI_PROTO_INET6);
-#endif
+	if (HAVE_IPV6)
+		avahi_resolve_host(d, hostname, AVAHI_PROTO_INET6);
 
 	if (d->resolved) {
 		port_knock_discovery_data(&d);
