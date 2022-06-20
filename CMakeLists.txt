@@ -2,6 +2,7 @@ message(STATUS "cmake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 2.8.7)
 project(libiio C)
 
+option(OSX_FRAMEWORK "Create a OSX_FRAMEWORK" ON)
 if (MINGW)
 	set(WIN32 ON)
 endif()
@@ -14,7 +15,7 @@ if (WIN32)
 endif()
 
 # Set the default install path to /usr
-if (NOT WIN32 AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if (NOT APPLE AND NOT WIN32 AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "default install path" FORCE)
 endif()
 
@@ -43,7 +44,7 @@ if (NOT BUILD_SHARED_LIBS)
 	add_definitions(-DLIBIIO_STATIC=1)
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND OSX_FRAMEWORK)
 	option(OSX_PACKAGE "Create a OSX package" ON)
 
 	set(OSX_INSTALL_FRAMEWORKSDIR "/Library/Frameworks" CACHE STRING "Installation directory for frameworks")
@@ -468,11 +469,16 @@ if (WIN32)
 	configure_file(properties.rc.cmakein ${LIBIIO_RC} @ONLY)
 endif()
 
+set(FRAMEWORK_ON True)
+if(NOT OSX_FRAMEWORK)
+	set(FRAMEWORK_ON False)
+endif()
+
 add_library(iio ${LIBIIO_CFILES} ${LIBIIO_HEADERS} ${LIBIIO_EXTRA_HEADERS} ${LIBIIO_RC})
 set_target_properties(iio PROPERTIES
 	VERSION ${VERSION}
 	SOVERSION ${LIBIIO_VERSION_MAJOR}
-	FRAMEWORK TRUE
+	FRAMEWORK ${FRAMEWORK_ON}
 	PUBLIC_HEADER ${LIBIIO_HEADERS}
 	C_STANDARD 99
 	C_STANDARD_REQUIRED ON
@@ -552,7 +558,7 @@ option(WITH_MAN "Generate on-line reference manuals (man pages)" OFF)
 add_subdirectory(man)
 
 # Create an installer if compiling for OSX
-if(OSX_PACKAGE)
+if(OSX_PACKAGE AND OSX_FRAMEWORK)
 	set(LIBIIO_PKG ${CMAKE_CURRENT_BINARY_DIR}/libiio-${VERSION}.g${LIBIIO_VERSION_GIT}.pkg)
 	set(LIBIIO_TEMP_PKG ${CMAKE_CURRENT_BINARY_DIR}/libiio-${VERSION}-temp.pkg)
 	set(LIBIIO_DISTRIBUTION_XML ${CMAKE_CURRENT_BINARY_DIR}/Distribution.xml)
