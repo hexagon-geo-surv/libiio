@@ -37,7 +37,20 @@ add_library(iio backend.c block.c channel.c device.c context.c buffer.c mask.c u
 option(LIBIIO_COMPAT "Add compatibility layer for libiio 0.x" ON)
 if (LIBIIO_COMPAT)
 	add_library(iio-compat compat.c)
-	target_link_libraries(iio-compat PRIVATE iio)
+	if (WIN32)
+		target_sources(iio-compat PRIVATE dynamic-windows.c)
+		target_compile_definitions(iio-compat PRIVATE
+			LIBIIO1_NAME="iio${PROJECT_VERSION_MAJOR}.dll"
+		)
+	else()
+		target_sources(iio-compat PRIVATE dynamic-unix.c)
+		target_link_libraries(iio-compat PRIVATE dl)
+		target_compile_definitions(iio-compat PRIVATE
+			LIBIIO1_NAME="libiio.so.${PROJECT_VERSION_MAJOR}"
+		)
+	endif()
+
+	target_include_directories(iio-compat PUBLIC ${CMAKE_BINARY_DIR})
 	target_compile_definitions(iio-compat PRIVATE LIBIIO_COMPAT_EXPORTS)
 	set(IIO_COMPAT_LIB iio-compat)
 
