@@ -530,7 +530,7 @@ static int start_iiod(const char *uri, const char *ffs_mountpoint,
 	xml_zstd = get_xml_zstd_data(ctx, &xml_zstd_len);
 	if (!xml_zstd) {
 		ret = EXIT_FAILURE;
-		goto err_destroy_context;
+		goto out_destroy_context;
 	}
 
 	if (WITH_IIOD_USBD && ffs_mountpoint) {
@@ -543,7 +543,7 @@ static int start_iiod(const char *uri, const char *ffs_mountpoint,
 			iio_strerror(-ret, err_str, sizeof(err_str));
 			IIO_ERROR("Unable to start USB daemon: %s\n", err_str);
 			ret = EXIT_FAILURE;
-			goto err_free_xml_data;
+			goto out_free_xml_data;
 		}
 	}
 
@@ -555,7 +555,7 @@ static int start_iiod(const char *uri, const char *ffs_mountpoint,
 			iio_strerror(-ret, err_str, sizeof(err_str));
 			IIO_ERROR("Unable to start serial daemon: %s\n", err_str);
 			ret = EXIT_FAILURE;
-			goto err_thread_pool_stop;
+			goto out_thread_pool_stop;
 		}
 	}
 
@@ -563,22 +563,16 @@ static int start_iiod(const char *uri, const char *ffs_mountpoint,
 		ret = main_interactive(ctx, debug, use_aio, xml_zstd, xml_zstd_len);
 	else
 		ret = main_server(ctx, debug, xml_zstd, xml_zstd_len, port);
-	if (ret) {
-		ret = EXIT_FAILURE;
-		goto err_thread_pool_stop;
-	}
 
-	return 0;
-
-err_thread_pool_stop:
+out_thread_pool_stop:
 	/*
 	 * In case we got here through an error in the main thread make sure all
 	 * the worker threads are signaled to shutdown.
 	 */
 	thread_pool_stop_and_wait(main_thread_pool);
-err_free_xml_data:
+out_free_xml_data:
 	free(xml_zstd);
-err_destroy_context:
+out_destroy_context:
 	iio_context_destroy(ctx);
 
 	return ret;
