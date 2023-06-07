@@ -210,7 +210,7 @@ stages:
         macOS_12:
           vmImage: 'macOS-12'
           artifactName: 'macOS-12'
-        macOS_13:
+        macOS_13_x64:
           vmImage: 'macOS-13'
           artifactName: 'macOS-13'
     pool:
@@ -224,6 +224,7 @@ stages:
         versionSpec: '3.x'
         addToPath: true
     - script: |
+          uname -a
           set -e
           brew install doxygen libusb libxml2 ncurses cdk libserialport sphinx-doc pkg-config
           pip3 install sphinx

@@ -46,6 +46,11 @@ class InstallWrapper(install):
 
     def _check_libiio_installed(self):
         cross_compiling = ("${CMAKE_CROSSCOMPILING}" == "TRUE")
+        message("CMAKE_CROSSCOMPILING Pre: ${CMAKE_CROSSCOMPILING}")
+
+        project(test)
+        message("CMAKE_CROSSCOMPILING Test: ${CMAKE_CROSSCOMPILING}")
+
         if cross_compiling:
             # When cross-compiling, we generally cannot dlopen
             # the libiio shared lib from the build platform.
