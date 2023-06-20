@@ -1,6 +1,7 @@
 SOM
 som
 mitre
+MiS
 tread
 elease
 tREAD
