@@ -282,7 +282,7 @@ int main(void)
 	if (ret)
 		goto clean;
 
-	info("* Creating non-cyclic IIO buffers with 1 MiS\n");
+	info("* Creating non-cyclic IIO buffers with 1 MiS \n");
 	rxbuf = iio_device_create_buffer(rx, 1024 * 1024, false);
 	if (!rxbuf) {
 		error("Could not create RX buffer: %s\n", strerror(errno));
