@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(libiio-py NONE)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(LIBIIO_LIBNAME "libiio.dylib")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	set(LIBIIO_LIBNAME "libiio.so")
+else()
+	set(LIBIIO_LIBNAME "iio.dll")
+endif()
+
 if(${CMAKE_VERSION} VERSION_LESS "3.12.0") 
 	message(STATUS "bin=${PYTHON_EXECUTABLE} lib=${PYTHON_LIBRARY} inc=${PYTHON_INCLUDE_DIR}")
 	include(FindPythonInterp)
