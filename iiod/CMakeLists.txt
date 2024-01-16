@@ -33,6 +33,10 @@ endif ()
 
 option(WITH_IIOD_V0_COMPAT "Build support for Libiio v0.x protocol" ON)
 if (WITH_IIOD_V0_COMPAT)
+	if (NO_THREADS)
+		message(SEND_ERROR "Libiio v0.x protocol support in IIOD require threads.")
+	endif()
+
 	include(FindBISON)
 	include(FindFLEX)
 
