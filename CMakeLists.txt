@@ -243,6 +243,8 @@ if (ENABLE_IPV6)
 	endif()
 endif()
 
+option(WITH_EXTERNAL_BACKEND "Support external backend provided by the application" OFF)
+
 option(WITH_USB_BACKEND "Enable the libusb backend" ON)
 if (WITH_USB_BACKEND)
 	find_package(PkgConfig)
