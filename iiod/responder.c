@@ -48,6 +48,8 @@ static void free_buffer_entry(struct buffer_entry *entry)
 {
 	struct block_entry *block_entry, *block_next;
 
+	iio_buffer_cancel(entry->buf);
+
 	iio_task_destroy(entry->enqueue_task);
 	iio_task_destroy(entry->dequeue_task);
 
