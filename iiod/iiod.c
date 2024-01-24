@@ -99,17 +99,21 @@ static void sig_handler_usr1(int sig)
 static void *get_xml_zstd_data(const struct iio_context *ctx, size_t *out_len)
 {
 #if WITH_ZSTD
-	const char *xml = iio_context_get_xml(ctx);
+	char *xml = iio_context_get_xml(ctx);
 	size_t len, xml_len = strlen(xml);
 	void *buf;
 	size_t ret;
 
 	len = ZSTD_compressBound(xml_len);
 	buf = malloc(len);
-	if (!buf)
+	if (!buf) {
+		free(xml);
 		return NULL;
+	}
 
 	ret = ZSTD_compress(buf, len, xml, xml_len, 3);
+	free(xml);
+
 	if (ZSTD_isError(ret)) {
 		IIO_WARNING("Unable to compress XML string: %s\n",
 			    ZSTD_getErrorName(xml_len));
