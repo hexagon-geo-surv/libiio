@@ -90,8 +90,22 @@ if(NOT SKIP_INSTALL_ALL)
 endif()
 
 if (WITH_SYSTEMD)
+	if(${WITH_HWMON})
+		set(CMAKE_SERVICE_PATH "ConditionPathExists=|/sys/bus/iio\nConditionPathExists=|/sys/class/hwmon")
+	else()
+		set(CMAKE_SERVICE_PATH "ConditionPathExists=/sys/bus/iio")
+	endif()
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init/iiod.service.cmakein ${PROJECT_BINARY_DIR}/init/iiod.service)
 	install(FILES ${PROJECT_BINARY_DIR}/init/iiod.service DESTINATION ${SYSTEMD_UNIT_INSTALL_DIR})
+	find_program(SYSTEMCTL
+		NAMES systemctl
+		DOC "Control the systemd system and service manager (systemctl)")
+	if(SYSTEMCTL)
+		message("starting iiod.service with ${SYSTEMCTL}")
+		install(CODE "execute_process(COMMAND ${SYSTEMCTL} enable iiod.service)")
+		install(CODE "execute_process(COMMAND ${SYSTEMCTL} restart iiod.service)")
+		install(CODE "execute_process(COMMAND ${SYSTEMCTL} status iiod.service)")
+	endif()
 endif()
 
 if (WITH_SYSVINIT)
