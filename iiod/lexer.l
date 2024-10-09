@@ -1,5 +1,5 @@
 %{
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: LGPL-2.1-or-later OR MIT
 /*
  * libiio - Library for interfacing industrial I/O (IIO) devices
  *
