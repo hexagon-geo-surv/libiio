@@ -115,7 +115,8 @@ namespace iio
             IIO_MOD_YAW,
             IIO_MOD_ROLL,
             IIO_MOD_LIGHT_UVA,
-            IIO_MOD_LIGHT_UVB
+            IIO_MOD_LIGHT_UVB,
+            IIO_ATTENTION
         }
 
         /// <summary><see cref="iio.Channel.ChannelType"/> class:
