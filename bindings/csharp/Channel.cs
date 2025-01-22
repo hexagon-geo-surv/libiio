@@ -107,7 +107,15 @@ namespace iio
             IIO_MOD_PM10,
             IIO_MOD_ETHANOL,
             IIO_MOD_H2,
-            IIO_MOD_O2
+            IIO_MOD_O2,
+            IIO_MOD_LINEAR_X,
+            IIO_MOD_LINEAR_Y,
+            IIO_MOD_LINEAR_Z,
+            IIO_MOD_PITCH,
+            IIO_MOD_YAW,
+            IIO_MOD_ROLL,
+            IIO_MOD_LIGHT_UVA,
+            IIO_MOD_LIGHT_UVB
         }
 
         /// <summary><see cref="iio.Channel.ChannelType"/> class:
