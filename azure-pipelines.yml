@@ -362,26 +362,31 @@ stages:
           arch: ppc64le
           build_script: ci-ubuntu.sh
           artifactName: 'Ubuntu-ppc64le'
+          usr-lib-archname: powerpc64le-linux-gnu
         ubuntu-x390x:
           image: tfcollins/libiio_ubuntu_20_04-ci-arm-ppc:latest
           arch: s390x
           build_script: ci-ubuntu.sh
           artifactName: 'Ubuntu-x390x'
+          usr-lib-archname:
         ubuntu-arm64v8:
           image: tfcollins/libiio_ubuntu_20_04-ci-arm-ppc:latest
           arch: aarch64
           build_script: ci-ubuntu.sh
           artifactName: 'Ubuntu-arm64v8'
+          usr-lib-archname:
         ubuntu-arm32v7:
           image: tfcollins/libiio_ubuntu_20_04-ci-arm-ppc:latest
           arch: arm
           build_script: ci-ubuntu.sh
           artifactName: 'Ubuntu-arm32v7'
+          usr-lib-archname:
         debian_bookworm:
           image: tfcollins/libiio_debian_bookworm-ci-arm-ppc:latest
           arch: arm
           build_script: ci-ubuntu.sh
           artifactName: 'Debian12-arm'
+          usr-lib-archname:
     steps:
     - script: |
         set -e
@@ -392,7 +397,7 @@ stages:
       displayName: 'Setup'
     - script: |
         set -e
-        sudo docker run --platform "linux/$(arch)" --rm -t --privileged -e ARTIFACTNAME=$(artifactName) -v "$(Agent.BuildDirectory)/s":"/ci" -v "/usr/bin/qemu-$(arch)-static":"/usr/bin/qemu-$(arch)-static" "$(image)" /bin/bash -c "cd /ci/ && chmod +x ./CI/azure/$(build_script) && ./CI/azure/$(build_script)"
+        sudo docker run --platform "linux/$(arch)" --rm -t --privileged -e ARTIFACTNAME=$(artifactName) -e USR_LIB_ARCHNAME=$(usr-lib-archname) -v "$(Agent.BuildDirectory)/s":"/ci" -v "/usr/bin/qemu-$(arch)-static":"/usr/bin/qemu-$(arch)-static" "$(image)" /bin/bash -c "cd /ci/ && chmod +x ./CI/azure/$(build_script) && ./CI/azure/$(build_script)"
       displayName: 'Build'
     - task: CopyFiles@2
       inputs:
