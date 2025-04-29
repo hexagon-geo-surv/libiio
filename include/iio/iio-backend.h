@@ -154,7 +154,7 @@ struct iio_backend {
  * applications should implement their own backend and provide the
  * iio_external_backend symbol.
  */
-extern const struct iio_backend iio_external_backend;
+extern const struct iio_backend __attribute__((weak, visibility("default"))) iio_external_backend;
 
 __api struct iio_context *
 iio_context_create_from_backend(const struct iio_context_params *params,
