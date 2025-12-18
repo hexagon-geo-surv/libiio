@@ -605,6 +605,18 @@ static ssize_t iiod_client_read_attr_new(struct iiod_client *client,
 		arg1 = (uint16_t) i;
 		arg2 = (uint16_t) buf->idx;
 		break;
+	case IIO_ATTR_TYPE_EVENT:
+		dev = attr->iio.dev;
+		cmd.op = IIOD_OP_READ_EVT_ATTR;
+
+		for (i = 0; i < iio_device_get_event_attrs_count(dev); i++)
+			if (iio_device_get_event_attr(dev, i) == attr)
+				break;
+		if (i == iio_device_get_event_attrs_count(dev))
+			return -ENOENT;
+
+		arg1 = (uint16_t) i;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -661,6 +673,10 @@ ssize_t iiod_client_attr_read(struct iiod_client *client,
 	case IIO_ATTR_TYPE_BUFFER:
 		iio_snprintf(buf, sizeof(buf), "READ %s BUFFER %s\r\n",
 			     id, attr->name);
+		break;
+	case IIO_ATTR_TYPE_EVENT:
+		iio_snprintf(buf, sizeof(buf), "READ %s EVENT %s\r\n",
+			id, attr->name);
 		break;
 	case IIO_ATTR_TYPE_CONTEXT:
 		return -EINVAL;
@@ -771,6 +787,19 @@ static ssize_t iiod_client_write_attr_new(struct iiod_client *client,
 		arg1 = (uint16_t) i;
 		arg2 = (uint16_t) buf->idx;
 		break;
+	case IIO_ATTR_TYPE_EVENT:
+		dev = attr->iio.dev;
+		cmd.op = IIOD_OP_WRITE_EVT_ATTR;
+
+		for (i = 0; i < iio_device_get_event_attrs_count(dev); i++)
+			if (iio_device_get_event_attr(dev, i) == attr)
+				break;
+
+		if (i == iio_device_get_event_attrs_count(dev))
+			return -ENOENT;
+
+		arg1 = (uint16_t) i;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -838,6 +867,10 @@ ssize_t iiod_client_attr_write(struct iiod_client *client,
 		break;
 	case IIO_ATTR_TYPE_BUFFER:
 		iio_snprintf(buf, sizeof(buf), "WRITE %s BUFFER %s %lu\r\n",
+			     id, attr->name, (unsigned long) len);
+		break;
+	case IIO_ATTR_TYPE_EVENT:
+		iio_snprintf(buf, sizeof(buf), "WRITE %s EVENT %s %lu\r\n",
 			     id, attr->name, (unsigned long) len);
 		break;
 	case IIO_ATTR_TYPE_CONTEXT:
