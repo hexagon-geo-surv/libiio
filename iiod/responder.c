@@ -19,6 +19,14 @@
 
 #define IIO_ARRAY_SIZE(x) (sizeof(x) ? sizeof(x) / sizeof((x)[0]) : 0)
 
+#if WITH_LIBTINYIIOD
+#define READ_ATTR_BUF_SIZE	256
+#define DISCARD_BUF_SIZE	256
+#else
+#define READ_ATTR_BUF_SIZE	0x10000
+#define DISCARD_BUF_SIZE	4096
+#endif
+
 /* Forward declaration */
 static struct buffer_entry * get_iio_buffer_entry(struct parser_pdata *pdata,
 						  const struct iiod_command *cmd);
@@ -166,7 +174,7 @@ static void handle_read_attr(struct parser_pdata *pdata,
 {
 	struct iiod_io *io = iiod_command_get_default_io(cmd_data);
 	ssize_t ret = -EINVAL;
-	char buf[0x10000];
+	char buf[READ_ATTR_BUF_SIZE];
 	const struct iio_attr *attr;
 	struct iiod_buf iiod_buf;
 
@@ -1178,7 +1186,7 @@ static ssize_t iiod_write(void *d, const struct iiod_buf *buf, size_t nb)
 static ssize_t iiod_discard(void *d, size_t bytes)
 {
 	struct parser_pdata *pdata = d;
-	char buf[4096];
+	char buf[DISCARD_BUF_SIZE];
 	size_t remaining = bytes;
 
 	while (remaining) {
