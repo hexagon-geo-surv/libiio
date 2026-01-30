@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define ARRAY_SIZE(x) (sizeof(x) ? sizeof(x) / sizeof((x)[0]) : 0)
+#define IIO_ARRAY_SIZE(x) (sizeof(x) ? sizeof(x) / sizeof((x)[0]) : 0)
 
 /* Forward declaration */
 static struct buffer_entry * get_iio_buffer_entry(struct parser_pdata *pdata,
