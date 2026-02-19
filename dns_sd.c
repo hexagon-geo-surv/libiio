@@ -97,14 +97,14 @@ static int dnssd_add_scan_result(const struct iio_context_params *params,
 	int err;
 
 	if (port == IIOD_PORT) {
-		iio_snprintf(uri, sizeof(uri), "ip:%s", hostname);
+		iio_snprintf(uri, sizeof(uri), "ip:%s", addr_str);
 	} else {
 #ifdef HAVE_IPV6
 		if (strchr(addr_str, ':'))
-			iio_snprintf(uri, sizeof(uri), "ip:[%s]:%hu", hostname, port);
+			iio_snprintf(uri, sizeof(uri), "ip:[%s]:%hu", addr_str, port);
 		else
 #endif
-			iio_snprintf(uri, sizeof(uri), "ip:%s:%hu", hostname, port);
+			iio_snprintf(uri, sizeof(uri), "ip:%s:%hu", addr_str, port);
 	}
 
 	ctx = iio_create_context(params, uri);
@@ -149,7 +149,7 @@ static int dnssd_add_scan_result(const struct iio_context_params *params,
 
 	iio_context_destroy(ctx);
 
-	return iio_scan_add_result(scan_ctx, description, uri);
+	return iio_scan_add_result(scan_ctx, description, hostname);
 }
 
 /*
