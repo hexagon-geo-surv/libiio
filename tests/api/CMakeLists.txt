@@ -16,6 +16,10 @@ set(API_TEST_TARGETS
     test_lowlevel
 )
 
+if(WITH_VITA49_BACKEND)
+    list(APPEND API_TEST_TARGETS test_vita49)
+endif()
+
 # Create a helper library for common test utilities
 add_library(test_common STATIC test_framework.h)
 set_target_properties(test_common PROPERTIES LINKER_LANGUAGE C)
@@ -44,6 +48,19 @@ foreach(test ${API_TEST_TARGETS})
         enable_coverage(${test})
     endif()
 endforeach()
+
+if(WITH_VITA49_BACKEND)
+	add_executable(test_vrt_iiod test_vrt_iiod.c ../../iiod/vrt_command.c ../../vita49_packet.c)
+	target_link_libraries(test_vrt_iiod PRIVATE test_common iio)
+	target_include_directories(test_vrt_iiod PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../
+    )
+    add_test(NAME api_vrt_iiod COMMAND test_vrt_iiod)
+endif()
 
 # Master test runner
 add_executable(run_all_api_tests run_all_api_tests.c)
