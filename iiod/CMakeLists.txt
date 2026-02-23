@@ -89,6 +89,11 @@ if (WITH_IIOD_NETWORK)
 	endif()
 endif()
 
+iio_option(WITH_VITA49_BACKEND "Add support for VITA49 backend" OFF "POSIX")
+if (WITH_VITA49_BACKEND)
+	target_sources(iiod PRIVATE vrt_command.c ../vita49_packet.c)
+endif()
+
 if (WITH_ZSTD)
 	target_include_directories(iiod PRIVATE ${LIBZSTD_INCLUDE_DIR})
 	target_link_libraries(iiod LINK_PRIVATE ${LIBZSTD_LIBRARIES})

@@ -11,6 +11,10 @@
 #include "ops.h"
 #include "thread-pool.h"
 
+#if WITH_VITA49_BACKEND
+#include "vrt_command.h"
+#endif
+
 #include <iio/iio-lock.h>
 
 #include <fcntl.h>
@@ -27,7 +31,7 @@
 #define STRINGIFY(x) _STRINGIFY(x)
 
 static int start_iiod(const char *uri, const char *ffs_mountpoint,
-		      const char *uart_params,
+		      const char *uart_params, const char *vrt_mapping_file,
 		      uint16_t port, unsigned int nb_pipes, int ep0_fd);
 
 bool server_demux;
@@ -48,6 +52,9 @@ static const struct option options[] = {
 	  {"serial", required_argument, 0, 's'},
 	  {"port", required_argument, 0, 'p'},
 	  {"uri", required_argument, 0, 'u'},
+#if WITH_VITA49_BACKEND
+	  {"vrt-mapping", required_argument, 0, 'm'},
+#endif
 	  {0, 0, 0, 0},
 };
 
@@ -65,6 +72,9 @@ static const char *options_descriptions[] = {
 		"\n\t\t\t    'usb:1.2.3', or 'usb:'"
 		"\n\t\t\t    'serial:/dev/ttyUSB0,115200,8n1'"
 		"\n\t\t\t    'local:' (default)"),
+#if WITH_VITA49_BACKEND
+	"Load VITA 49.2 command translation mappings from the specified CSV file.",
+#endif
 };
 
 static void usage(void)
@@ -187,11 +197,17 @@ int main(int argc, char **argv)
 	const char *uri = "local:";
 	int c, option_index = 0;
 	char *ffs_mountpoint = NULL;
-	char *uart_params = NULL;
+	char *vrt_mapping_file = NULL;
 	uint16_t port = IIOD_PORT;
 	int ret, ep0_fd = 0;
 
-	while ((c = getopt_long(argc, argv, "+hVdDF:n:s:p:u:",
+#if WITH_VITA49_BACKEND
+	const char *optstring = "+hVdDF:n:s:p:u:m:";
+#else
+	const char *optstring = "+hVdDF:n:s:p:u:";
+#endif
+
+	while ((c = getopt_long(argc, argv, optstring,
 					options, &option_index)) != -1) {
 		switch (c) {
 		case 'd':
@@ -241,6 +257,11 @@ int main(int argc, char **argv)
 		case 'u':
 			uri = optarg;
 			break;
+#if WITH_VITA49_BACKEND
+		case 'm':
+			vrt_mapping_file = optarg;
+			break;
+#endif
 		case 'h':
 			usage();
 			return EXIT_SUCCESS;
@@ -282,7 +303,7 @@ int main(int argc, char **argv)
 		restart_usr1 = false;
 
 		ret = start_iiod(uri, ffs_mountpoint, uart_params,
-				 port, nb_pipes, ep0_fd);
+				 vrt_mapping_file, port, nb_pipes, ep0_fd);
 	} while (!ret && restart_usr1);
 
 	thread_pool_destroy(main_thread_pool);
@@ -371,7 +392,29 @@ static int start_iiod(const char *uri, const char *ffs_mountpoint,
 		}
 	}
 
+#if WITH_VITA49_BACKEND
+	ret = vrt_command_init(ctx);
+	if (ret < 0) {
+		IIO_ERROR("Failed to initialize VRT command layer\n");
+	} else {
+		if (vrt_mapping_file) {
+			vrt_command_load_mappings(vrt_mapping_file);
+		}
+
+		/* Start the VRT listener on a custom UDP port (e.g., 1235) */
+		ret = vrt_command_start_listener(ctx, 1235);
+		if (ret < 0) {
+			IIO_ERROR("Failed to start VRT command listener\n");
+		}
+	}
+#endif
+
 	thread_pool_wait(main_thread_pool);
+
+#if WITH_VITA49_BACKEND
+	vrt_command_stop_listener();
+	vrt_command_cleanup();
+#endif
 
 out_thread_pool_stop:
 	/*
