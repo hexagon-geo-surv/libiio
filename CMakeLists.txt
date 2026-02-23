@@ -571,13 +571,20 @@ if(WITH_NETWORK_BACKEND)
 	endif()
 
 	set(IIOD_CLIENT 1)
-	set(NEED_LIBXML2 1)
-else()
-	set(HAVE_DNS_SD OFF)
-endif()
-
-
-iio_option(WITH_XML_BACKEND "Enable the XML backend" ON "POSIX")
+		set(NEED_LIBXML2 1)
+	else()
+		set(HAVE_DNS_SD OFF)
+	endif()
+	
+	iio_option(WITH_VITA49_BACKEND "Enable the VITA 49.2 backend" ON "POSIX")
+	if(WITH_VITA49_BACKEND)
+		if (WIN32)
+			target_link_libraries(iio PRIVATE wsock32 iphlpapi ws2_32)
+		endif()
+		target_sources(iio PRIVATE vita49.c vita49_packet.c)
+	endif()
+	
+	iio_option(WITH_XML_BACKEND "Enable the XML backend" ON "POSIX")
 if (WITH_XML_BACKEND)
 	# Since libxml2-2.9.2, libxml2 provides its own LibXml2-config.cmake, with all
 	# variables correctly set.
