@@ -28,7 +28,9 @@ from ctypes import (
     c_void_p,
     c_bool,
     create_string_buffer,
+    c_float,
     c_double,
+    c_uint16,
     cast,
     sizeof,
     string_at,
@@ -147,6 +149,105 @@ class DataFormat(Structure):
         ("scale", c_double),
         ("repeat", c_uint),
         ("offset", c_double),
+    ]
+import sys
+
+class _VRTHeader(Structure):
+    if sys.byteorder == "little":
+        _fields_ = [
+            ("packet_size_words", c_uint, 16),
+            ("packet_count", c_uint, 4),
+            ("ts_fractional_format", c_uint, 2),
+            ("ts_integer_format", c_uint, 2),
+            ("reserved", c_uint, 2),
+            ("has_trailer", c_uint, 1),
+            ("has_class_id", c_uint, 1),
+            ("packet_type", c_uint, 4),
+        ]
+    else:
+        _fields_ = [
+            ("packet_type", c_uint, 4),
+            ("has_class_id", c_uint, 1),
+            ("has_trailer", c_uint, 1),
+            ("reserved", c_uint, 2),
+            ("ts_integer_format", c_uint, 2),
+            ("ts_fractional_format", c_uint, 2),
+            ("packet_count", c_uint, 4),
+            ("packet_size_words", c_uint, 16),
+        ]
+
+class _VRTTrailer(Structure):
+    if sys.byteorder == "little":
+        _fields_ = [
+            ("associated_context_packet_count", c_uint, 7),
+            ("context_packet_count_enable", c_uint, 1),
+            ("state_and_event_indicators", c_uint, 12),
+            ("indicator_enables", c_uint, 12),
+        ]
+    else:
+        _fields_ = [
+            ("indicator_enables", c_uint, 12),
+            ("state_and_event_indicators", c_uint, 12),
+            ("context_packet_count_enable", c_uint, 1),
+            ("associated_context_packet_count", c_uint, 7),
+        ]
+
+class _VRTPacket(Structure):
+    _fields_ = [
+        ("header", _VRTHeader),
+        ("stream_id", c_uint),
+        ("class_id", c_uint64),
+        ("timestamp_int", c_uint),
+        ("timestamp_frac", c_uint64),
+        ("payload", _POINTER(c_uint)),
+        ("payload_words", c_size_t),
+        ("trailer", _VRTTrailer),
+        ("has_stream_id", c_bool),
+        ("has_class_id", c_bool),
+        ("has_timestamp_int", c_bool),
+        ("has_timestamp_frac", c_bool),
+        ("has_trailer", c_bool),
+    ]
+
+class _VRTCifFields(Structure):
+    _fields_ = [
+        ("cif0", c_uint),
+        ("context_field_change", c_bool),
+        ("has_reference_point_id", c_bool),
+        ("reference_point_id", c_uint),
+        ("has_bandwidth", c_bool),
+        ("bandwidth", c_double),
+        ("has_if_reference_frequency", c_bool),
+        ("if_reference_frequency", c_double),
+        ("has_rf_reference_frequency", c_bool),
+        ("rf_reference_frequency", c_double),
+        ("has_rf_reference_frequency_offset", c_bool),
+        ("rf_reference_frequency_offset", c_double),
+        ("has_if_band_offset", c_bool),
+        ("if_band_offset", c_double),
+        ("has_reference_level", c_bool),
+        ("reference_level", c_float),
+        ("has_gain", c_bool),
+        ("gain_stage_1", c_float),
+        ("gain_stage_2", c_float),
+        ("has_over_range_count", c_bool),
+        ("over_range_count", c_uint),
+        ("has_sample_rate", c_bool),
+        ("sample_rate", c_double),
+        ("has_timestamp_adjustment", c_bool),
+        ("timestamp_adjustment", c_uint64),
+        ("has_timestamp_calibration_time", c_bool),
+        ("timestamp_calibration_time_int", c_uint),
+        ("timestamp_calibration_time_frac", c_uint64),
+        ("has_temperature", c_bool),
+        ("temperature", c_float),
+        ("has_device_identifier", c_bool),
+        ("device_identifier_oui", c_uint),
+        ("device_identifier_code", c_uint16),
+        ("has_state_and_event_indicators", c_bool),
+        ("state_and_event_indicators", c_uint),
+        ("has_data_packet_payload_format", c_bool),
+        ("data_packet_payload_format", c_uint64),
     ]
 
 class EventType(Enum):
@@ -321,8 +422,11 @@ if "Windows" in _system():
     _lib_loc = find_library("libiio1.dll")
 else:
     # Non-windows, possibly Posix system
-    _lib_loc = find_library("iio")
-    if _path.islink(_lib_loc):
+    import os
+    _lib_loc = os.environ.get("LIBIIO_LIBRARY")
+    if not _lib_loc:
+        _lib_loc = find_library("iio")
+    if _lib_loc and _path.islink(_lib_loc):
         _lib_loc = _path.realpath(_lib_loc)
     if _lib_loc is not None:
         filename = _path.basename(_lib_loc)
@@ -625,6 +729,27 @@ _c_write.argtypes = (
     c_size_t,
     c_bool,
 )
+
+# VITA 49.2 Exports
+_vrt_parse_packet = getattr(_lib, "vrt_parse_packet", None)
+if _vrt_parse_packet:
+    _vrt_parse_packet.restype = c_int
+    _vrt_parse_packet.argtypes = [c_void_p, c_size_t, c_void_p]
+
+_vrt_get_payload_word = getattr(_lib, "vrt_get_payload_word", None)
+if _vrt_get_payload_word:
+    _vrt_get_payload_word.restype = c_uint
+    _vrt_get_payload_word.argtypes = [c_void_p, c_size_t]
+
+_vrt_get_payload_double = getattr(_lib, "vrt_get_payload_double", None)
+if _vrt_get_payload_double:
+    _vrt_get_payload_double.restype = c_double
+    _vrt_get_payload_double.argtypes = [c_void_p, c_size_t]
+
+_vrt_parse_cif_payload = getattr(_lib, "vrt_parse_cif_payload", None)
+if _vrt_parse_cif_payload:
+    _vrt_parse_cif_payload.restype = c_int
+    _vrt_parse_cif_payload.argtypes = [_POINTER(_VRTPacket), _POINTER(_VRTCifFields)]
 
 _channel_get_device = _lib.iio_channel_get_device
 _channel_get_device.restype = _DevicePtr
@@ -1542,6 +1667,191 @@ class Context(_IIO_Object):
         "List of devices contained in this context.\n\ttype=list of iio.Device and iio.Trigger objects",
     )
 
+
+class VRTPacket(object):
+    """A wrapper identifying parsed VITA 49.2 parameters from a network byte-order buffer."""
+
+    def __init__(self, buffer):
+        """
+        Parses a bytes-like object or raw pointer into an unpacked internal struct vrt_packet.
+        
+        :param buffer: type=bytes
+            The raw UDP payload bytes comprising the VITA 49.2 packet
+        """
+        if not _vrt_parse_packet:
+            raise NotImplementedError("VITA 49.2 backend is not compiled in this libiio build.")
+            
+        self._buf = create_string_buffer(buffer, len(buffer))
+        self._pkt_size_words = len(buffer) // 4
+        
+        # We need an internal struct vrt_packet instance that ctypes can populate
+        self._pkt_struct = _VRTPacket()
+        
+        ret = _vrt_parse_packet(self._buf, self._pkt_size_words, _byref(self._pkt_struct))
+        if ret < 0:
+            raise ValueError(f"Failed to parse VRT packet. Error code: {ret}")
+
+    @property
+    def packet_type(self):
+        """The VITA 49.2 Packet Type."""
+        return self._pkt_struct.header.packet_type
+
+    @property
+    def packet_size_words(self):
+        """The size of the parsed packet in 32-bit words."""
+        return self._pkt_struct.header.packet_size_words
+
+    @property
+    def has_stream_id(self):
+        """Returns True if the packet has a Stream Identifier."""
+        return self._pkt_struct.has_stream_id
+
+    @property
+    def stream_id(self):
+        """Gets the VITA 49.2 Stream ID. Raises ValueError if not present."""
+        if not self.has_stream_id:
+            raise ValueError("Stream ID is not present in this packet.")
+        return self._pkt_struct.stream_id
+
+    @property
+    def has_class_id(self):
+        """Returns True if the packet has a Class Identifier."""
+        return self._pkt_struct.has_class_id
+
+    @property
+    def class_id(self):
+        """Gets the VITA 49.2 64-bit Class ID. Raises ValueError if not present."""
+        if not self.has_class_id:
+            raise ValueError("Class ID is not present in this packet.")
+        return self._pkt_struct.class_id
+        
+    @property
+    def payload_size_words(self):
+        """Gets the bounds of the packet payload length in 32-bit words."""
+        return self._pkt_struct.payload_words
+
+    def get_payload_word(self, offset):
+        """
+        Fetch a 32-bit word from the packet payload area, handling network byte-order translation.
+        
+        :param offset: type=int
+            The 0-indexed word boundary in the VRT payload section
+        returns: type=int
+        """
+        if not _vrt_get_payload_word:
+            raise NotImplementedError("VITA 49 backend missing.")
+        if offset >= self.payload_size_words:
+            raise IndexError("Offset out of bounds for VRT Payload.")
+        return _vrt_get_payload_word(_byref(self._pkt_struct), c_size_t(offset))
+
+    def get_payload_double(self, offset):
+        """
+        Fetch a 64-bit IEEE 754 float from the packet payload area.
+        
+        :param offset: type=int
+            The 0-indexed word boundary in the VRT payload section (consumes two words)
+        returns: type=float
+        """
+        if not _vrt_get_payload_double:
+            raise NotImplementedError("VITA 49 backend missing.")
+        if offset + 1 >= self.payload_size_words:
+            raise IndexError("Offset out of bounds for 64-bit VRT Payload extraction.")
+        return _vrt_get_payload_double(_byref(self._pkt_struct), c_size_t(offset))
+
+    def cif_fields(self):
+        """
+        Parses the Context Indicator Field 0 (CIF0) payload sequentially.
+        Only valid for Context packets.
+        
+        returns: type=iio.VRTCifFields
+            The parsed CIF fields, or None if the packet is not a valid Context packet.
+        """
+        if not _vrt_parse_cif_payload:
+            raise NotImplementedError("VITA 49 backend functionality for CIF missing.")
+        cif_struct = _VRTCifFields()
+        ret = _vrt_parse_cif_payload(_byref(self._pkt_struct), _byref(cif_struct))
+        if ret < 0:
+            return None
+        return VRTCifFields(cif_struct)
+
+
+class VRTCifFields(object):
+    """A wrapper providing property access to VITA 49.2 parsed CIF fields."""
+    
+    def __init__(self, cif_struct):
+        self._cif = cif_struct
+        
+    @property
+    def cif0(self):
+        return self._cif.cif0
+        
+    @property
+    def context_field_change(self):
+        return self._cif.context_field_change
+        
+    @property
+    def has_reference_point_id(self):
+        return self._cif.has_reference_point_id
+        
+    @property
+    def reference_point_id(self):
+        return self._cif.reference_point_id if self._cif.has_reference_point_id else None
+        
+    @property
+    def has_bandwidth(self):
+        return self._cif.has_bandwidth
+        
+    @property
+    def bandwidth(self):
+        return self._cif.bandwidth if self._cif.has_bandwidth else None
+        
+    @property
+    def has_if_reference_frequency(self):
+        return self._cif.has_if_reference_frequency
+        
+    @property
+    def if_reference_frequency(self):
+        return self._cif.if_reference_frequency if self._cif.has_if_reference_frequency else None
+        
+    @property
+    def has_rf_reference_frequency(self):
+        return self._cif.has_rf_reference_frequency
+        
+    @property
+    def rf_reference_frequency(self):
+        return self._cif.rf_reference_frequency if self._cif.has_rf_reference_frequency else None
+        
+    @property
+    def has_rf_reference_frequency_offset(self):
+        return self._cif.has_rf_reference_frequency_offset
+        
+    @property
+    def rf_reference_frequency_offset(self):
+        return self._cif.rf_reference_frequency_offset if self._cif.has_rf_reference_frequency_offset else None
+        
+    @property
+    def has_if_band_offset(self):
+        return self._cif.has_if_band_offset
+        
+    @property
+    def if_band_offset(self):
+        return self._cif.if_band_offset if self._cif.has_if_band_offset else None
+        
+    @property
+    def has_sample_rate(self):
+        return self._cif.has_sample_rate
+        
+    @property
+    def sample_rate(self):
+        return self._cif.sample_rate if self._cif.has_sample_rate else None
+        
+    @property
+    def has_temperature(self):
+        return self._cif.has_temperature
+        
+    @property
+    def temperature(self):
+        return self._cif.temperature if self._cif.has_temperature else None
 
 class LocalContext(Context):
     """Local IIO Context."""
