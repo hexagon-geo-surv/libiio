@@ -1,0 +1,10 @@
+# VITA 49.2 iiod Translation Mapping Configuration
+# 
+# Format:
+# stream_id,cif0_bit,device_name,channel_name,is_output,attr_name
+#
+# Examples for AD9361 matching a prototype standard context:
+# Bit 21 = Sample Rate (100 MSPS)
+0x12345678,21,ad9361-phy,voltage0,true,sampling_frequency
+# Bit 30 = Bandwidth (56 MHz)
+0x12345678,30,ad9361-phy,voltage0,true,rf_bandwidth

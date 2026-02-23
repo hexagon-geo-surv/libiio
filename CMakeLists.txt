@@ -725,6 +725,11 @@ add_subdirectory(bindings)
 option(WITH_MAN "Generate on-line reference manuals (man pages)" OFF)
 add_subdirectory(man)
 
+option(WITH_SPHINX_DOC "Generate Sphinx documentation" ON)
+if(WITH_SPHINX_DOC)
+	add_subdirectory(doc/vrt)
+endif()
+
 # Testing
 option(WITH_TESTS "Enabling unit testing" OFF)
 option(TESTS_DEBUG "Enable test debugging" OFF)
