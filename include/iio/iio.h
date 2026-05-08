@@ -1092,6 +1092,33 @@ __api __check_ret __pure const struct iio_attr *
 iio_channel_find_attr(const struct iio_channel *chn, const char *name);
 
 
+/** @brief Get the number of event attributes for a channel
+ * @param chn A pointer to an iio_channel structure
+ * @return The number of event attributes */
+__api __check_ret __pure unsigned int
+iio_channel_get_event_attrs_count(const struct iio_channel *chn);
+
+
+/** @brief Get the event attribute present at the given index
+ * @param chn A pointer to an iio_channel structure
+ * @param index The index of the event attribute
+ * @return On success, a pointer to an iio_attr structure
+ * @return If the index is invalid, NULL is returned */
+__api __check_ret __pure const struct iio_attr *
+iio_channel_get_event_attr(const struct iio_channel *chn, unsigned int index);
+
+
+/** @brief Try to find a channel event attribute by its name
+ * @param chn A pointer to an iio_channel structure
+ * @param name A NULL-terminated string corresponding to the name of the event
+ * attribute
+ * @return On success, a pointer to an iio_attr structure
+ * @return If the name does not correspond to any known event attribute of the
+ * given channel, NULL is returned */
+__api __check_ret __pure const struct iio_attr *
+iio_channel_find_event_attr(const struct iio_channel *chn, const char *name);
+
+
 /** @brief Enable the given channel
  * @param chn A pointer to an iio_channel structure
  * @param mask The channels mask to manipulate */
