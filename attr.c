@@ -256,6 +256,21 @@ int iio_channel_add_attr(struct iio_channel *chn,
 	return 0;
 }
 
+int iio_channel_add_event_attr(struct iio_channel *chn,
+			       const char *name, const char *filename)
+{
+	union iio_pointer p = { .chn = chn, };
+	int ret;
+
+	ret = iio_add_attr(p, &chn->event_attrlist, name, filename,
+			   IIO_ATTR_TYPE_CHANNEL);
+	if (ret < 0)
+		return ret;
+
+	chn_dbg(chn, "Added event attr \'%s\' (\'%s\')\n", name, filename);
+	return 0;
+}
+
 int iio_buffer_add_attr(struct iio_buffer *buf, const char *name)
 {
 	union iio_pointer p = { .buf = buf, };

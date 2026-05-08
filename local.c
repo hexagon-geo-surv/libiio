@@ -1285,11 +1285,36 @@ static int add_event(void *d, const char *path)
 {
 	struct iio_device *dev = (struct iio_device *) d;
 	const char *name = strrchr(path, '/') + 1;
+	const char *short_name;
+	struct iio_channel *chn;
+	char *channel_id;
+	unsigned int i;
+	int ret;
 
 	if (is_event_attr(dev, name))
 		return iio_device_add_attr(dev, name, IIO_ATTR_TYPE_EVENT);
-	else
-		return add_attr_or_channel_helper(dev, path, "events/", false);
+
+	/* Channel event attribute - find the matching channel */
+	channel_id = get_channel_id(dev, name);
+	if (!channel_id)
+		return -ENOMEM;
+
+	for (i = 0; i < dev->nb_channels; i++) {
+		chn = dev->channels[i];
+		if (!strcmp(chn->id, channel_id)
+				&& chn->is_output == (name[0] == 'o')) {
+			free(channel_id);
+			short_name = get_short_attr_name(chn, name);
+			ret = iio_channel_add_event_attr(chn, short_name, name);
+			return ret;
+		}
+	}
+
+	/* No matching channel found */
+	dev_err(dev, "Channel event attribute \'%s\' has no matching channel \'%s\'\n",
+		name, channel_id);
+	free(channel_id);
+	return -ENODEV;
 }
 
 static int add_scan_element(void *d, const char *path)
