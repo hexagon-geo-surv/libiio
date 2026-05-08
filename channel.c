@@ -261,6 +261,42 @@ static ssize_t iio_snprintf_chan_attr_xml(const struct iio_attr *attr,
 	return alen + ret;
 }
 
+static ssize_t iio_snprintf_chan_event_attr_xml(const struct iio_attr *attr,
+						const char *value,
+						char *str, ssize_t len)
+{
+	ssize_t ret, alen = 0;
+
+	ret = iio_snprintf(str, len, "<event-attribute name=\"%s\"", attr->name);
+	if (ret < 0)
+		return ret;
+	iio_update_xml_indexes(ret, &str, &len, &alen);
+
+	if (attr->filename) {
+		ret = iio_xml_print_and_sanitized_param(str, len,
+							" filename=\"",
+							attr->filename, "\"");
+		if (ret < 0)
+			return ret;
+		iio_update_xml_indexes(ret, &str, &len, &alen);
+	}
+
+	if (value) {
+		ret = iio_xml_print_and_sanitized_param(str, len,
+							" value=\"",
+							value, "\"");
+		if (ret < 0)
+			return ret;
+		iio_update_xml_indexes(ret, &str, &len, &alen);
+	}
+
+	ret = iio_snprintf(str, len, " />");
+	if (ret < 0)
+		return ret;
+
+	return alen + ret;
+}
+
 static ssize_t iio_snprintf_scan_element_xml(char *str, ssize_t len,
 					     const struct iio_channel *chn)
 {
@@ -330,6 +366,19 @@ ssize_t iio_snprintf_channel_xml(char *ptr, ssize_t len,
 
 		ret = iio_snprintf_chan_attr_xml(&chn->attrlist.attrs[i],
 						val, ptr, len);
+		if (ret < 0)
+			return ret;
+		iio_update_xml_indexes(ret, &ptr, &len, &alen);
+	}
+
+	for (i = 0; i < chn->event_attrlist.num; i++) {
+		const char *val = NULL;
+
+		if (include_values && chn->event_values)
+			val = chn->event_values[i];
+
+		ret = iio_snprintf_chan_event_attr_xml(&chn->event_attrlist.attrs[i],
+						      val, ptr, len);
 		if (ret < 0)
 			return ret;
 		iio_update_xml_indexes(ret, &ptr, &len, &alen);

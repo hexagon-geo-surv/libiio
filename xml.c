@@ -13,6 +13,8 @@
 #include <libxml/tree.h>
 #include <string.h>
 
+#include "attr.h"
+
 #define XML_HEADER "<?xml version=\"1.0\""
 
 static struct iio_context *
@@ -40,6 +42,29 @@ static int add_attr_to_channel(struct iio_channel *chn, xmlNode *n)
 	}
 
 	return iio_channel_add_attr(chn, name, filename);
+}
+
+static int add_event_attr_to_channel(struct iio_channel *chn, xmlNode *n)
+{
+	const char *name = NULL, *filename = NULL;
+	xmlAttr *attr;
+
+	for (attr = n->properties; attr; attr = attr->next) {
+		if (!strcmp((const char *)attr->name, "name")) {
+			name = (const char *)attr->children->content;
+		} else if (!strcmp((const char *)attr->name, "filename")) {
+			filename = (const char *)attr->children->content;
+		} else {
+			chn_dbg(chn, "Unknown field \'%s\'\n", attr->name);
+		}
+	}
+
+	if (!name) {
+		chn_err(chn, "Incomplete event attribute\n");
+		return -EINVAL;
+	}
+
+	return iio_channel_add_event_attr(chn, name, filename);
 }
 
 static int add_attr_to_device(struct iio_device *dev, xmlNode *n, enum iio_attr_type type)
@@ -225,6 +250,10 @@ static int create_channel(struct iio_device *dev, xmlNode *node)
 	for (n = node->children; n; n = n->next) {
 		if (!strcmp((char *) n->name, "attribute")) {
 			err = add_attr_to_channel(chn, n);
+			if (err < 0)
+				return err;
+		} else if (!strcmp((char *) n->name, "event-attribute")) {
+			err = add_event_attr_to_channel(chn, n);
 			if (err < 0)
 				return err;
 		} else if (strcmp((char *) n->name, "scan-element")
