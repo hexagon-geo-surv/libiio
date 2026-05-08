@@ -119,6 +119,9 @@ struct iio_channel {
 	struct iio_attr_list attrlist;
 	char **values;
 
+	struct iio_attr_list event_attrlist;
+	char **event_values;
+
 	unsigned int number;
 };
 
