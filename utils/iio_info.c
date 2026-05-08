@@ -346,15 +346,25 @@ int main(int argc, char **argv)
 			print_channel(ch);
 
 			nb_attrs = iio_channel_get_attrs_count(ch);
-			if (!nb_attrs)
-				continue;
+			if (nb_attrs) {
+				printf("\t\t\t%u channel-specific attributes found:\n",
+						nb_attrs);
 
-			printf("\t\t\t%u channel-specific attributes found:\n",
-					nb_attrs);
+				for (k = 0; k < nb_attrs; k++) {
+					attr = iio_channel_get_attr(ch, k);
+					print_attr(attr, 4, k, read_sysfs_attr, read_debug_attr);
+				}
+			}
 
-			for (k = 0; k < nb_attrs; k++) {
-				attr = iio_channel_get_attr(ch, k);
-				print_attr(attr, 4, k, read_sysfs_attr, read_debug_attr);
+			nb_ev_attrs = iio_channel_get_event_attrs_count(ch);
+			if (nb_ev_attrs) {
+				printf("\t\t\t%u channel-specific event attributes found:\n",
+						nb_ev_attrs);
+
+				for (k = 0; k < nb_ev_attrs; k++) {
+					attr = iio_channel_get_event_attr(ch, k);
+					print_attr(attr, 4, k, read_sysfs_attr, read_debug_attr);
+				}
 			}
 		}
 

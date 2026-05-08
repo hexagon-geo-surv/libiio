@@ -711,7 +711,7 @@ int main(int argc, char **argv)
 			const char *ch_name, *ch_label;
 			struct iio_buffer *buffer;
 			struct iio_channels_mask *mask;
-			unsigned int nb_attrs, nb_channels, j;
+			unsigned int nb_attrs, nb_ev_attrs, nb_channels, j;
 
 			if (device_index && !str_match(dev_id, argw[device_index], ignore_case)
 					&& !str_match(label, argw[device_index], ignore_case)
@@ -881,6 +881,35 @@ int main(int argc, char **argv)
 						write_err = true;
 					else if (ret < 0 && attr_index)
 						read_err = true;
+				}
+
+				/* Channel event attributes */
+				nb_ev_attrs = iio_channel_get_event_attrs_count(ch);
+				if (!channel_index && nb_ev_attrs)
+					printf("found %u channel-specific event attributes\n",
+							nb_ev_attrs);
+
+				if (nb_ev_attrs && channel_index) {
+					for (k = 0; k < nb_ev_attrs; k++) {
+						attr = iio_channel_get_event_attr(ch, k);
+
+						if (attr_index &&
+							!str_match(iio_attr_get_name(attr),
+								   argw[attr_index],
+								   ignore_case))
+							continue;
+						gen_dev(dev);
+						found_err = false;
+						attr_found = true;
+						gen_ch(ch);
+						ret = dump_channel_attributes(dev, ch, attr, wbuf,
+									wraw, wraw_len, write_only,
+									attr_index ? quiet : ATTR_VERBOSE);
+						if ((wbuf || wraw) && ret < 0)
+							write_err = true;
+						else if (ret < 0 && attr_index)
+							read_err = true;
+					}
 				}
 			}
 
