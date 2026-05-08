@@ -368,7 +368,7 @@ struct iio_context * handle_common_opts(char * name, int argc,
 	else if (backend == IIO_URI)
 		ctx = iio_create_context(&params, arg);
 	else
-		ctx = iio_create_context(NULL, NULL);
+		ctx = iio_create_context(&params, NULL);
 
 	err = iio_err(ctx);
 	if (err && !do_scan && !detect_context) {
