@@ -407,7 +407,7 @@ class Channel
 public:
 
     Channel() = delete;
-    Channel(iio_channel * chan) : p(chan), attrs(chan){assert(chan);}
+    Channel(iio_channel * chan) : p(chan), attrs(chan), event_attrs(chan){assert(chan);}
     operator iio_channel * () const {return p;}
 
 #ifndef DOXYGEN
@@ -416,11 +416,18 @@ public:
                            iio_channel_get_attr,
                            iio_channel_find_attr
                            > AttrSeq;
+    typedef impl::AttrSeqT<iio_channel,
+                           iio_channel_get_event_attrs_count,
+                           iio_channel_get_event_attr,
+                           iio_channel_find_event_attr
+                           > EventAttrSeq;
 #else
     typedef impl::AttrSeqT<Channel> AttrSeq;
+    typedef impl::AttrSeqT<Channel> EventAttrSeq;
 #endif
 
     AttrSeq attrs;
+    EventAttrSeq event_attrs;
 
     Device device() const;
     cstr id() const {return iio_channel_get_id(p);}
@@ -431,6 +438,9 @@ public:
     unsigned int attrs_count() const {return iio_channel_get_attrs_count(p);}
     optional<Attr> attr(unsigned int index) {return impl::maybe<Attr>(iio_channel_get_attr(p, index));}
     optional<Attr> find_attr(cstr name) {return impl::maybe<Attr>(iio_channel_find_attr(p, name));}
+    unsigned int event_attrs_count() const {return iio_channel_get_event_attrs_count(p);}
+    optional<Attr> event_attr(unsigned int index) {return impl::maybe<Attr>(iio_channel_get_event_attr(p, index));}
+    optional<Attr> find_event_attr(cstr name) {return impl::maybe<Attr>(iio_channel_find_event_attr(p, name));}
     void enable(iio_channels_mask * mask) {iio_channel_enable(p, mask);}
     void disable(iio_channels_mask * mask) {iio_channel_disable(p, mask);}
     bool is_enabled(iio_channels_mask * mask) const { return iio_channel_is_enabled(p, mask);}
