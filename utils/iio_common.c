@@ -262,7 +262,7 @@ struct iio_context * handle_common_opts(char * name, int argc,
 	if (default_params)
 		params = *default_params;
 	enum backend backend = IIO_LOCAL;
-	const char *arg = NULL, *prefix = NULL;
+	const char *arg = NULL;
 	bool do_scan = false, detect_context = false;
 	char buf[1024];
 	struct option *opts;
@@ -355,14 +355,6 @@ struct iio_context * handle_common_opts(char * name, int argc,
 		return NULL;
 	} else if (detect_context || backend == IIO_AUTO) {
 		ctx = autodetect_context(true, name, arg);
-	} else if (prefix) {
-		err = iio_snprintf(buf, sizeof(buf), "%s:%s", prefix, arg);
-		if (err < 0)
-			ctx = iio_ptr(err);
-		else if ((size_t)err >= sizeof(buf))
-			ctx = iio_ptr(-EINVAL);
-		else
-			ctx = iio_create_context(NULL, buf);
 	} else if (!arg && backend != IIO_LOCAL)
 		fprintf(stderr, "argument parsing error\n");
 	else if (backend == IIO_URI)
