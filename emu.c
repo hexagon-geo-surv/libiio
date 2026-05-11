@@ -22,6 +22,7 @@
 #include <iio/iio-debug.h>
 #include <iio/iio-lock.h>
 #include "iio-private.h"
+#include "attr.h"
 #include <math.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -127,6 +128,9 @@ static xmlNode *getDeviceAttr(xmlDoc *doc, const char *device_id,
 	case IIO_ATTR_TYPE_BUFFER:
 		/* Buffer attributes require special handling for both formats */
 		return find_buffer_attribute(node_device, attr);
+	case IIO_ATTR_TYPE_EVENT:
+		attr_type_name = "event-attribute";
+		break;
 	default:
 		return NULL;
 	}
@@ -135,10 +139,11 @@ static xmlNode *getDeviceAttr(xmlDoc *doc, const char *device_id,
 
 static xmlNode *getChannelAttr(xmlDoc *doc, const char *device_id,
 								const char *channel_id, bool ch_out,
-								const char *attr)
+								enum iio_attr_type type, const char *attr)
 {
 	xmlNode *root, *node_device, *node_channel;
 	const char *channel_type;
+	const char *attr_type_name;
 	if (!doc)
 		return NULL;
 
@@ -149,19 +154,31 @@ static xmlNode *getChannelAttr(xmlDoc *doc, const char *device_id,
 
 	channel_type = ch_out ? "output" : "input";
 
+	/* Determine the attribute node type based on the attribute type */
+	switch (type) {
+	case IIO_ATTR_TYPE_CHANNEL:
+		attr_type_name = "attribute";
+		break;
+	case IIO_ATTR_TYPE_EVENT:
+		attr_type_name = "event-attribute";
+		break;
+	default:
+		return NULL;
+	}
+
 	for (node_channel = node_device->children; node_channel; node_channel = node_channel->next) {
 		if (strcmp((char *) node_channel->name, "channel"))
 			continue;
 		xmlAttr *prop;
-		const char *id = NULL, *type = NULL;
+		const char *id = NULL, *type_str = NULL;
 		for (prop = node_channel->properties; prop; prop = prop->next) {
 			if (strcmp((char *) prop->name, "id") == 0)
 				id = (char *) prop->children->content;
 			else if (strcmp((char *) prop->name, "type") == 0)
-				type = (char *) prop->children->content;
+				type_str = (char *) prop->children->content;
 		}
-		if (id && type && strcmp(id, channel_id) == 0 && strcmp(type, channel_type) == 0) {
-			return getNode(node_channel, "attribute", "name", attr);
+		if (id && type_str && strcmp(id, channel_id) == 0 && strcmp(type_str, channel_type) == 0) {
+			return getNode(node_channel, attr_type_name, "name", attr);
 		}
 	}
 	return NULL;
@@ -200,10 +217,11 @@ static ssize_t write_device_attr(xmlDoc *doc, const char *device_id,
 
 static ssize_t read_channel_attr(xmlDoc *doc, const char *device_id,
 								const char *channel_id, bool ch_out,
-								const char *attr, char *buf, size_t len)
+								enum iio_attr_type type, const char *attr,
+								char *buf, size_t len)
 {
 	char *value;
-	xmlNode *node_attr = getChannelAttr(doc, device_id, channel_id, ch_out, attr);
+	xmlNode *node_attr = getChannelAttr(doc, device_id, channel_id, ch_out, type, attr);
 	if (!node_attr)
 		return -ENOENT;
 	value = (char *) xmlGetProp(node_attr, (const xmlChar *) "value");
@@ -218,9 +236,10 @@ static ssize_t read_channel_attr(xmlDoc *doc, const char *device_id,
 
 static ssize_t write_channel_attr(xmlDoc *doc, const char *device_id,
 								const char *channel_id, bool ch_out,
-								const char *attr, const char *buf, size_t len)
+								enum iio_attr_type type, const char *attr,
+								const char *buf, size_t len)
 {
-	xmlNode *node_attr = getChannelAttr(doc, device_id, channel_id, ch_out, attr);
+	xmlNode *node_attr = getChannelAttr(doc, device_id, channel_id, ch_out, type, attr);
 
 	if (!node_attr)
 		return -ENOENT;
@@ -349,6 +368,29 @@ static int add_attr_to_channel(struct iio_channel *chn, xmlNode *n)
 	}
 
 	return iio_channel_add_attr(chn, name, filename);
+}
+
+static int add_event_attr_to_channel(struct iio_channel *chn, xmlNode *n)
+{
+	const char *name = NULL, *filename = NULL;
+	xmlAttr *attr;
+
+	for (attr = n->properties; attr; attr = attr->next) {
+		if (!strcmp((const char *) attr->name, "name")) {
+			name = (const char *) attr->children->content;
+		} else if (!strcmp((const char *) attr->name, "filename")) {
+			filename = (const char *) attr->children->content;
+		} else {
+			chn_dbg(chn, "Unknown field \'%s\'\n", attr->name);
+		}
+	}
+
+	if (!name) {
+		chn_err(chn, "Incomplete event attribute\n");
+		return -EINVAL;
+	}
+
+	return iio_channel_add_event_attr(chn, name, filename);
 }
 
 static int setup_scan_element(const struct iio_device *dev,
@@ -497,6 +539,10 @@ static int create_channel(struct iio_device *dev, xmlNode *node)
 			err = add_attr_to_channel(chn, n);
 			if (err < 0)
 				return err;
+		} else if (!strcmp((char *) n->name, "event-attribute")) {
+			err = add_event_attr_to_channel(chn, n);
+			if (err < 0)
+				return err;
 		} else if (strcmp((char *) n->name, "scan-element")
 			   && strcmp((char *) n->name, "text")) {
 			chn_dbg(chn, "Unknown children \'%s\' in <channel>\n",
@@ -580,6 +626,10 @@ static int create_device(struct iio_context *ctx, xmlNode *n)
 				return err;
 		} else if (!strcmp((char *) n->name, "debug-attribute")) {
 			err = add_attr_to_device(dev, n, IIO_ATTR_TYPE_DEBUG);
+			if (err < 0)
+				return err;
+		} else if (!strcmp((char *) n->name, "event-attribute")) {
+			err = add_attr_to_device(dev, n, IIO_ATTR_TYPE_EVENT);
 			if (err < 0)
 				return err;
 		} else if (!strcmp((char *) n->name, "buffer-attribute") && buf_legacy) {
@@ -743,7 +793,19 @@ static ssize_t emu_read_attr(const struct iio_attr *attr, char *dst, size_t len)
 		if (!chn)
 			return -EINVAL;
 		return read_channel_attr(pdata->doc, device_id, iio_channel_get_id(chn),
-									iio_channel_is_output(chn), attr_name, dst, len);
+									iio_channel_is_output(chn), IIO_ATTR_TYPE_CHANNEL,
+									attr_name, dst, len);
+	}
+
+	/* Handle channel event attributes - they have type EVENT but belong to a channel */
+	if (attr->type == IIO_ATTR_TYPE_EVENT) {
+		const struct iio_channel *chn = attr->iio.chn;
+		if (chn) {
+			/* This is a channel event attribute */
+			return read_channel_attr(pdata->doc, device_id, iio_channel_get_id(chn),
+										iio_channel_is_output(chn), IIO_ATTR_TYPE_EVENT,
+										attr_name, dst, len);
+		}
 	}
 
 	return read_device_attr(pdata->doc, device_id, attr->type, attr_name, dst, len);
@@ -804,6 +866,13 @@ static int check_available(const struct iio_attr *attr, const char *src)
 	case IIO_ATTR_TYPE_DEBUG:
 		avail_attr = iio_device_find_debug_attr(attr->iio.dev, avail_name);
 		break;
+	case IIO_ATTR_TYPE_EVENT:
+		/* Event attributes can belong to either a channel or a device */
+		if (attr->iio.chn)
+			avail_attr = iio_channel_find_event_attr(attr->iio.chn, avail_name);
+		else
+			avail_attr = iio_device_find_event_attr(attr->iio.dev, avail_name);
+		break;
 	default:
 		return 0;
 	}
@@ -842,7 +911,19 @@ static ssize_t emu_write_attr(const struct iio_attr *attr, const char *src, size
 		if (!chn)
 			return -EINVAL;
 		return write_channel_attr(pdata->doc, device_id, iio_channel_get_id(chn),
-									iio_channel_is_output(chn), attr_name, src, len);
+									iio_channel_is_output(chn), IIO_ATTR_TYPE_CHANNEL,
+									attr_name, src, len);
+	}
+
+	/* Handle channel event attributes - they have type EVENT but belong to a channel */
+	if (attr->type == IIO_ATTR_TYPE_EVENT) {
+		const struct iio_channel *chn = attr->iio.chn;
+		if (chn) {
+			/* This is a channel event attribute */
+			return write_channel_attr(pdata->doc, device_id, iio_channel_get_id(chn),
+										iio_channel_is_output(chn), IIO_ATTR_TYPE_EVENT,
+										attr_name, src, len);
+		}
 	}
 
 	return write_device_attr(pdata->doc, device_id, attr_name, src, len, attr->type);
