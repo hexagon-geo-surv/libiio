@@ -547,7 +547,6 @@ static ssize_t iiod_client_read_attr_new(struct iiod_client *client,
 	case IIO_ATTR_TYPE_CHANNEL:
 		chn = attr->iio.chn;
 		dev = iio_channel_get_device(chn);
-		cmd.op = IIOD_OP_READ_CHN_ATTR;
 
 		for (i = 0; i < iio_device_get_channels_count(dev); i++)
 			if (iio_device_get_channel(dev, i) == chn)
@@ -555,15 +554,29 @@ static ssize_t iiod_client_read_attr_new(struct iiod_client *client,
 
 		arg2 = (uint16_t) i;
 
+		/* Check regular channel attributes first */
 		for (i = 0; i < iio_channel_get_attrs_count(chn); i++)
 			if (iio_channel_get_attr(chn, i) == attr)
 				break;
 
-		if (i == iio_channel_get_attrs_count(chn))
-			return -ENOENT;
+		if (i < iio_channel_get_attrs_count(chn)) {
+			cmd.op = IIOD_OP_READ_CHN_ATTR;
+			arg1 = (uint16_t) i;
+			break;
+		}
 
-		arg1 = (uint16_t) i;
-		break;
+		/* Check channel event attributes */
+		for (i = 0; i < iio_channel_get_event_attrs_count(chn); i++)
+			if (iio_channel_get_event_attr(chn, i) == attr)
+				break;
+
+		if (i < iio_channel_get_event_attrs_count(chn)) {
+			cmd.op = IIOD_OP_READ_CHN_EVT_ATTR;
+			arg1 = (uint16_t) i;
+			break;
+		}
+
+		return -ENOENT;
 	case IIO_ATTR_TYPE_DEVICE:
 		dev = attr->iio.dev;
 		cmd.op = IIOD_OP_READ_ATTR;
@@ -729,7 +742,6 @@ static ssize_t iiod_client_write_attr_new(struct iiod_client *client,
 	case IIO_ATTR_TYPE_CHANNEL:
 		chn = attr->iio.chn;
 		dev = iio_channel_get_device(chn);
-		cmd.op = IIOD_OP_WRITE_CHN_ATTR;
 
 		for (i = 0; i < iio_device_get_channels_count(dev); i++)
 			if (iio_device_get_channel(dev, i) == chn)
@@ -737,15 +749,29 @@ static ssize_t iiod_client_write_attr_new(struct iiod_client *client,
 
 		arg2 = (uint16_t) i;
 
+		/* Check regular channel attributes first */
 		for (i = 0; i < iio_channel_get_attrs_count(chn); i++)
 			if (iio_channel_get_attr(chn, i) == attr)
 				break;
 
-		if (i == iio_channel_get_attrs_count(chn))
-			return -ENOENT;
+		if (i < iio_channel_get_attrs_count(chn)) {
+			cmd.op = IIOD_OP_WRITE_CHN_ATTR;
+			arg1 = (uint16_t) i;
+			break;
+		}
 
-		arg1 = (uint16_t) i;
-		break;
+		/* Check channel event attributes */
+		for (i = 0; i < iio_channel_get_event_attrs_count(chn); i++)
+			if (iio_channel_get_event_attr(chn, i) == attr)
+				break;
+
+		if (i < iio_channel_get_event_attrs_count(chn)) {
+			cmd.op = IIOD_OP_WRITE_CHN_EVT_ATTR;
+			arg1 = (uint16_t) i;
+			break;
+		}
+
+		return -ENOENT;
 	case IIO_ATTR_TYPE_DEVICE:
 		dev = attr->iio.dev;
 		cmd.op = IIOD_OP_WRITE_ATTR;
