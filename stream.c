@@ -86,6 +86,8 @@ void iio_stream_destroy(struct iio_stream *stream)
 {
 	size_t i;
 
+	iio_stream_cancel(stream);
+
 	for (i = 0; i < stream->nb_blocks; i++) {
 		if (stream->blocks[i]) {
 			/* Make sure to dequeue any possible in flight block
