@@ -477,11 +477,18 @@ static void handle_open_buffer(struct parser_pdata *pdata, const struct iiod_com
 
 	/* Success, destroy the temporary mask object */
 	iio_channels_mask_destroy(mask);
+	mask = NULL;
 
 	entry->buf_stream = buf_stream;
 	entry->pdata = pdata;
 
 	iio_mutex_lock(buflist_lock);
+	if (!iio_err(get_iio_buffer_entry_unlocked(pdata, cmd))) {
+		iio_mutex_unlock(buflist_lock);
+		IIO_ERROR("RACE CAUGHT\n");
+		ret = -EEXIST;
+		goto err_close_buf_stream;
+	}
 	SLIST_INSERT_HEAD(&bufferlist, entry, entry);
 	iio_mutex_unlock(buflist_lock);
 
@@ -496,6 +503,8 @@ static void handle_open_buffer(struct parser_pdata *pdata, const struct iiod_com
 	iiod_io_send_response(io, data.size, &data, 1);
 	return;
 
+err_close_buf_stream:
+	iio_buffer_close(buf_stream);
 err_destroy_lock:
 	iio_mutex_destroy(entry->lock);
 err_destroy_dequeue_task:
