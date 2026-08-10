@@ -30,7 +30,8 @@ set_target_properties(
     iio_tests_helper
     PROPERTIES C_STANDARD 99
                C_STANDARD_REQUIRED ON
-               C_EXTENSIONS OFF)
+               C_EXTENSIONS OFF
+               ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 foreach (test ${IIO_UTILS_TARGETS})
     project(${test} LANGUAGES C)
